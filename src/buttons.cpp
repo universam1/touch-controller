@@ -110,14 +110,35 @@ void setup()
     Serial.begin(115200);
 }
 
+#define UCARCONV 12.0f / 550.0f
+#define UCARMAX 13.0f
+
+void scaleToVSup()
+{
+    static uint32_t lastScale;
+    if (millis() - lastScale < 500)
+        return;
+    lastScale = millis();
+
+    float volt = float(analogRead(carABat)) * UCARCONV;
+    Serial.print("Ucar: ");
+    Serial.println(volt);
+
+    auto current = led.getCurrent();
+    float factor = volt / UCARMAX;
+
+    while (factor > 1.0)
+    {
+        auto pwm = led.getGammaValue(--current);
+        /* code */
+    }
+}
+
 void loop()
 {
-    FadeLed::update();
-
     auto carTrigger = isCarTriggered();
     if (carTrigger == OPENED)
     {
-
         Serial.println("opened");
         led.on();
     }
@@ -129,7 +150,6 @@ void loop()
     else if (isTouchTriggered())
     {
         flash();
-        Serial.println(analogRead(carABat));
         if (!led.done())
         {
             Serial.print("s");
@@ -142,6 +162,6 @@ void loop()
             led.set(direction ? 100 : 0);
         }
     }
-
+    FadeLed::update();
     evalStandby();
 }
