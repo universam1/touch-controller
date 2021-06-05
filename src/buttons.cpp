@@ -4,7 +4,10 @@
 
 const uint32_t standbyDelay = 2000;
 uint32_t lastLight;
-bool direction;
+const uint32_t shutdownDelay = 2000;
+uint32_t lightOnSince;
+
+bool directionUp;
 const uint8_t touchPin = 2;
 const uint8_t carPin = 3;
 const uint8_t carALight = A1;
@@ -87,6 +90,18 @@ void evalStandby()
         lastLight = millis();
     }
 }
+void evalShutdown()
+{
+    if (led.get() == 0)
+    {
+        return;
+    }
+    if (millis() - lightOnSince > shutdownDelay)
+    {
+        Serial.println("\nshutdown");
+        led.off();
+    }
+}
 void ISR0()
 {
     _touched = true;
@@ -110,28 +125,49 @@ void setup()
     Serial.begin(115200);
 }
 
-#define UCARCONV 12.0f / 550.0f
+#define UCARCONV 12.0f / 550.0f / ROUNDS
 #define UCARMAX 13.0f
 
 void scaleToVSup()
 {
-    static uint32_t lastScale;
-    if (millis() - lastScale < 500)
-        return;
-    lastScale = millis();
-
-    float volt = float(analogRead(carABat)) * UCARCONV;
-    Serial.print("Ucar: ");
-    Serial.println(volt);
-
-    auto current = led.getCurrent();
-    float factor = volt / UCARMAX;
-
-    while (factor > 1.0)
+    float val;
+    for (size_t i = 0; i < ROUNDS; i++)
     {
-        auto pwm = led.getGammaValue(--current);
-        /* code */
+        val += analogRead(carABat);
     }
+    float volt = val * UCARCONV;
+    Serial.print("Ucar: ");
+    Serial.print(volt);
+    float factor = 255.0f * UCARMAX / volt;
+    Serial.print("    factor: ");
+    Serial.println(factor);
+    if (factor > 1.0)
+        factor = 1.0;
+
+    auto current = led.get();
+    uint8_t limit = factor * 255.0f;
+
+    while (led.getGammaValue(current) > limit)
+    {
+        current--;
+        Serial.print("r");
+    }
+    if (led.get() != current)
+    {
+        Serial.print("scaled V:");
+        Serial.print(led.get());
+        Serial.print(":");
+        Serial.print(current);
+    }
+    led.set(current);
+}
+
+void ledOn()
+{
+    led.on();
+    scaleToVSup();
+    lightOnSince = millis();
+    directionUp = true;
 }
 
 void loop()
@@ -140,12 +176,13 @@ void loop()
     if (carTrigger == OPENED)
     {
         Serial.println("opened");
-        led.on();
+        ledOn();
     }
     else if (carTrigger == CLOSED)
     {
         Serial.println("closed");
         led.off();
+        directionUp = false;
     }
     else if (isTouchTriggered())
     {
@@ -157,11 +194,26 @@ void loop()
         }
         else
         {
-            direction = !direction;
-            Serial.print(direction ? "u" : "d");
-            led.set(direction ? 100 : 0);
+            directionUp = !directionUp;
+            if (directionUp)
+            {
+                Serial.print("u");
+                ledOn();
+            }
+            else
+            {
+                Serial.print("d");
+                led.off();
+            }
         }
     }
+    static uint32_t lastScale;
+    if (millis() - lastScale > 500)
+    {
+        lastScale = millis();
+        scaleToVSup();
+    }
+    evalShutdown(); 
     FadeLed::update();
     evalStandby();
 }
