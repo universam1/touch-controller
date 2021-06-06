@@ -2,9 +2,9 @@
 #include "LowPower.h"
 #include <FadeLed.h>
 
-const uint32_t standbyDelay = 2000;
+const uint32_t standbyDelay = 2 * 1000;
 uint32_t lastLight;
-const uint32_t shutdownDelay = 2000;
+const uint32_t shutdownDelay = 60 * 60 * 1000;
 uint32_t lightOnSince;
 
 bool directionUp;
@@ -18,6 +18,9 @@ volatile bool _carTrigger = false;
 #define OPENED 1
 #define CLOSED -1
 #define FADETIME 5000
+
+#define UCARCONV 13.20f / 615.8f / ROUNDS
+#define UCARMAX 12.5f
 
 FadeLed led(FETPort);
 
@@ -125,9 +128,6 @@ void setup()
     Serial.begin(115200);
 }
 
-#define UCARCONV 12.0f / 550.0f / ROUNDS
-#define UCARMAX 13.0f
-
 void scaleToVSup()
 {
     float val;
@@ -138,28 +138,37 @@ void scaleToVSup()
     float volt = val * UCARCONV;
     Serial.print("Ucar: ");
     Serial.print(volt);
-    float factor = 255.0f * UCARMAX / volt;
-    Serial.print("    factor: ");
-    Serial.println(factor);
+    // Serial.print("   raw: ");
+    // Serial.print(val / ROUNDS);
+    float factor = UCARMAX / volt;
+    // Serial.print("    factor: ");
+    // Serial.print(factor);
     if (factor > 1.0)
         factor = 1.0;
 
     auto current = led.get();
     uint8_t limit = factor * 255.0f;
+    Serial.print("    limit: ");
+    Serial.print(limit);
+    Serial.print("    gamma: ");
+    Serial.println(led.getGammaValue(current));
 
-    while (led.getGammaValue(current) > limit)
+    // while (led.getGammaValue(current) > limit)
+    // {
+    //     current--;
+    //     Serial.print("r");
+    // }
+    // if (led.get() != current)
+    // {
+    //     Serial.print("scaled V:");
+    //     Serial.print(led.get());
+    //     Serial.print(":");
+    //     Serial.println(current);
+    // }
+    if (led.getGammaValue(current) > limit)
     {
-        current--;
-        Serial.print("r");
+        led.set(--current);
     }
-    if (led.get() != current)
-    {
-        Serial.print("scaled V:");
-        Serial.print(led.get());
-        Serial.print(":");
-        Serial.print(current);
-    }
-    led.set(current);
 }
 
 void ledOn()
@@ -189,7 +198,7 @@ void loop()
         flash();
         if (!led.done())
         {
-            Serial.print("s");
+            Serial.println("s");
             led.stop();
         }
         else
@@ -197,23 +206,23 @@ void loop()
             directionUp = !directionUp;
             if (directionUp)
             {
-                Serial.print("u");
+                Serial.println("u");
                 ledOn();
             }
             else
             {
-                Serial.print("d");
+                Serial.println("d");
                 led.off();
             }
         }
     }
     static uint32_t lastScale;
-    if (millis() - lastScale > 500)
+    if (millis() - lastScale > 1000)
     {
         lastScale = millis();
         scaleToVSup();
     }
-    evalShutdown(); 
+    evalShutdown();
     FadeLed::update();
     evalStandby();
 }
