@@ -2,9 +2,9 @@
 #include "LowPower.h"
 #include <FadeLed.h>
 
-const uint32_t standbyDelay = 2 * 1000;
+const uint32_t standbyDelay = 20U * 1000U;
 uint32_t lastLight;
-const uint32_t shutdownDelay = 60 * 60 * 1000;
+const uint32_t shutdownDelay = 60U * 60U * 1000U;
 uint32_t lightOnSince;
 
 bool directionUp;
@@ -19,7 +19,7 @@ volatile bool _carTrigger = false;
 #define CLOSED -1
 #define FADETIME 5000
 
-#define UCARCONV 13.20f / 615.8f / ROUNDS
+#define UCARCONV 13.3f / 608.0f / ROUNDS
 #define UCARMAX 12.5f
 
 FadeLed led(FETPort);
@@ -62,16 +62,17 @@ int8_t isCarTriggered()
         _carTrigger = false;
     else if (_carTrigger)
     {
-        delay(50); // let cap discharge
-        uint16_t res = 0;
+        delay(300); // let cap discharge
+        int res = 0;
+        auto prev = analogRead(carALight);
         for (size_t i = 0; i < ROUNDS; i++)
         {
-            delay(10);
+            delay(20);
             auto r = analogRead(carALight);
-            Serial.println(r);
-            res += r;
+            res += r - prev;
+            Serial.println(res);
         }
-        ret = res < 250 * ROUNDS ? OPENED : CLOSED;
+        ret = res < 0 ? OPENED : CLOSED;
         _carTrigger = false;
         lastCarTrigger = millis();
     }
@@ -138,8 +139,8 @@ void scaleToVSup()
     float volt = val * UCARCONV;
     Serial.print("Ucar: ");
     Serial.print(volt);
-    // Serial.print("   raw: ");
-    // Serial.print(val / ROUNDS);
+    Serial.print("   raw: ");
+    Serial.print(val / ROUNDS);
     float factor = UCARMAX / volt;
     // Serial.print("    factor: ");
     // Serial.print(factor);
@@ -151,8 +152,10 @@ void scaleToVSup()
     Serial.print("    limit: ");
     Serial.print(limit);
     Serial.print("    gamma: ");
-    Serial.println(led.getGammaValue(current));
+    Serial.print(led.getGammaValue(current));
 
+    Serial.print("    car: ");
+    Serial.println(analogRead(carALight));
     // while (led.getGammaValue(current) > limit)
     // {
     //     current--;
