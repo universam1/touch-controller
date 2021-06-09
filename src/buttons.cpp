@@ -2,9 +2,9 @@
 #include "LowPower.h"
 #include <FadeLed.h>
 
-const uint32_t standbyDelay = 20U * 1000U;
+const uint32_t standbyDelay = 5U * 1000U;
 uint32_t lastLight;
-const uint32_t shutdownDelay = 60U * 60U * 1000U;
+const uint32_t shutdownDelay = 30U * 60U * 1000U;
 uint32_t lightOnSince;
 
 bool directionUp;
@@ -33,7 +33,7 @@ void flash()
         return;
     led.begin(currentRaw < 50 ? currentRaw + 25 : currentRaw - 25);
     FadeLed::update();
-    delay(10);
+    delay(20);
     led.begin(currentRaw);
     FadeLed::update();
     led.set(current);
@@ -44,12 +44,16 @@ void flash()
 bool isTouchTriggered()
 {
     static uint32_t lastTouch;
+    bool t = false;
 
     if (millis() - lastTouch < 200)
         _touched = false;
     else if (_touched)
+    {
         lastTouch = millis();
-    return _touched;
+        t = true;
+    }
+    return t;
 }
 
 int8_t isCarTriggered()
@@ -58,11 +62,14 @@ int8_t isCarTriggered()
     static uint32_t lastCarTrigger;
     int8_t ret = 0;
 
-    if (millis() - lastCarTrigger < 100)
+    if (millis() - lastCarTrigger < 1000)
         _carTrigger = false;
     else if (_carTrigger)
     {
-        delay(300); // let cap discharge
+        lastCarTrigger = millis();
+        _carTrigger = false;
+
+        delay(200); // let cap discharge
         int res = 0;
         auto prev = analogRead(carALight);
         for (size_t i = 0; i < ROUNDS; i++)
@@ -73,8 +80,6 @@ int8_t isCarTriggered()
             Serial.println(res);
         }
         ret = res < 0 ? OPENED : CLOSED;
-        _carTrigger = false;
-        lastCarTrigger = millis();
     }
 
     return ret;
@@ -137,7 +142,7 @@ void scaleToVSup()
         val += analogRead(carABat);
     }
     float volt = val * UCARCONV;
-    Serial.print("Ucar: ");
+    Serial.print("UBat: ");
     Serial.print(volt);
     Serial.print("   raw: ");
     Serial.print(val / ROUNDS);
@@ -154,7 +159,7 @@ void scaleToVSup()
     Serial.print("    gamma: ");
     Serial.print(led.getGammaValue(current));
 
-    Serial.print("    car: ");
+    Serial.print("    Ulight: ");
     Serial.println(analogRead(carALight));
     // while (led.getGammaValue(current) > limit)
     // {
