@@ -31,7 +31,7 @@ void flash()
     // no flash when off
     if (currentRaw == 0)
         return;
-    led.begin(currentRaw < 50 ? currentRaw + 25 : currentRaw - 25);
+    led.begin(currentRaw < 50 ? (currentRaw + 25) : (currentRaw - 25));
     FadeLed::update();
     delay(20);
     led.begin(currentRaw);
@@ -58,28 +58,42 @@ bool isTouchTriggered()
 
 int8_t isCarTriggered()
 {
-#define ROUNDS 10
+#define ROUNDS 6
     static uint32_t lastCarTrigger;
     int8_t ret = 0;
 
-    if (millis() - lastCarTrigger < 1000)
+    if (millis() - lastCarTrigger < 800)
         _carTrigger = false;
     else if (_carTrigger)
     {
         lastCarTrigger = millis();
         _carTrigger = false;
 
-        delay(200); // let cap discharge
+        delay(300); // let cap discharge
+
+        // early test powered off
+        int val;
+        for (uint8_t i = 0; i < ROUNDS; i++)
+        {
+            val += analogRead(carABat);
+        }
+        if (val < 200 * ROUNDS)
+        {
+            Serial.println("Poff");
+            return CLOSED;
+        }
+
+        // powered on
         int res = 0;
         auto prev = analogRead(carALight);
-        for (size_t i = 0; i < ROUNDS; i++)
+        for (uint8_t i = 0; i < ROUNDS; i++)
         {
             delay(20);
             auto r = analogRead(carALight);
             res += r - prev;
-            Serial.println(res);
         }
-        ret = res < 0 ? OPENED : CLOSED;
+        Serial.println(res);
+        ret = res < -100 ? OPENED : CLOSED;
     }
 
     return ret;
@@ -87,9 +101,7 @@ int8_t isCarTriggered()
 void evalStandby()
 {
     if (led.getCurrent() > 0)
-    {
         lastLight = millis();
-    }
     else if (millis() - lastLight > standbyDelay)
     {
         Serial.println("\nstdby");
@@ -102,9 +114,7 @@ void evalStandby()
 void evalShutdown()
 {
     if (led.get() == 0)
-    {
         return;
-    }
     if (millis() - lightOnSince > shutdownDelay)
     {
         Serial.println("\nshutdown");
@@ -147,8 +157,6 @@ void scaleToVSup()
     Serial.print("   raw: ");
     Serial.print(val / ROUNDS);
     float factor = UCARMAX / volt;
-    // Serial.print("    factor: ");
-    // Serial.print(factor);
     if (factor > 1.0)
         factor = 1.0;
 
@@ -161,22 +169,8 @@ void scaleToVSup()
 
     Serial.print("    Ulight: ");
     Serial.println(analogRead(carALight));
-    // while (led.getGammaValue(current) > limit)
-    // {
-    //     current--;
-    //     Serial.print("r");
-    // }
-    // if (led.get() != current)
-    // {
-    //     Serial.print("scaled V:");
-    //     Serial.print(led.get());
-    //     Serial.print(":");
-    //     Serial.println(current);
-    // }
     if (led.getGammaValue(current) > limit)
-    {
         led.set(--current);
-    }
 }
 
 void ledOn()
