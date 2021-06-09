@@ -2,9 +2,9 @@
 #include "LowPower.h"
 #include <FadeLed.h>
 
-const uint32_t standbyDelay = 5U * 1000U;
+const uint32_t standbyDelay = 5UL * 1000UL;
 uint32_t lastLight;
-const uint32_t shutdownDelay = 30U * 60U * 1000U;
+const uint32_t shutdownDelay = 30UL * 60UL * 1000UL;
 uint32_t lightOnSince;
 
 bool directionUp;
