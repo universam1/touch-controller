@@ -173,9 +173,10 @@ void scaleToVSup()
         led.set(--current);
 }
 
-void ledOn()
+void ledOn(uint8_t val = 255, bool quick = false)
 {
-    led.on();
+    led.setTime(quick ? FADETIME / 3 : FADETIME);
+    led.set(val);
     scaleToVSup();
     lightOnSince = millis();
     directionUp = true;
@@ -187,13 +188,14 @@ void loop()
     if (carTrigger == OPENED)
     {
         Serial.println("opened");
-        ledOn();
+        if (led.get() != 0)
+            ledOn(127, true);
     }
     else if (carTrigger == CLOSED)
     {
         Serial.println("closed");
-        led.off();
         directionUp = false;
+        led.off();
     }
     else if (isTouchTriggered())
     {
@@ -209,7 +211,10 @@ void loop()
             if (directionUp)
             {
                 Serial.println("u");
-                ledOn();
+                if (led.getCurrent() == 0)
+                    ledOn(127);
+                else
+                    ledOn(255);
             }
             else
             {
