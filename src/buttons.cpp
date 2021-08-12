@@ -60,7 +60,6 @@ int8_t isCarTriggered()
 {
 #define ROUNDS 6
     static uint32_t lastCarTrigger;
-    int8_t ret = 0;
 
     if (millis() - lastCarTrigger < 800)
         _carTrigger = false;
@@ -75,6 +74,7 @@ int8_t isCarTriggered()
         int val;
         for (uint8_t i = 0; i < ROUNDS; i++)
         {
+            delay(20);
             val += analogRead(carABat);
         }
         if (val < 200 * ROUNDS)
@@ -93,11 +93,12 @@ int8_t isCarTriggered()
             res += r - prev;
         }
         Serial.println(res);
-        ret = res < -100 ? OPENED : CLOSED;
+        return res < -100 ? OPENED : CLOSED;
     }
 
-    return ret;
+    return 0;
 }
+
 void evalStandby()
 {
     if (led.getCurrent() > 0)
@@ -111,16 +112,7 @@ void evalStandby()
         lastLight = millis();
     }
 }
-void evalShutdown()
-{
-    if (led.get() == 0)
-        return;
-    if (millis() - lightOnSince > shutdownDelay)
-    {
-        Serial.println("\nshutdown");
-        led.off();
-    }
-}
+
 void ISR0()
 {
     _touched = true;
@@ -173,13 +165,25 @@ void scaleToVSup()
         led.set(--current);
 }
 
-void ledOn(uint8_t val = 255, bool quick = false)
+void ledTo(uint8_t val = 255, bool quick = false)
 {
     led.setTime(quick ? FADETIME / 3 : FADETIME);
+    directionUp = val > 0;
     led.set(val);
     scaleToVSup();
-    lightOnSince = millis();
-    directionUp = true;
+    if (val != 0)
+        lightOnSince = millis();
+}
+
+void evalShutdown()
+{
+    if (led.get() == 0)
+        return;
+    if (millis() - lightOnSince > shutdownDelay)
+    {
+        Serial.println("\nshutdown");
+        ledTo(0);
+    }
 }
 
 void loop()
@@ -189,13 +193,13 @@ void loop()
     {
         Serial.println("opened");
         if (led.get() != 0)
-            ledOn(127, true);
+            ledTo(127, true);
     }
     else if (carTrigger == CLOSED)
     {
         Serial.println("closed");
         directionUp = false;
-        led.off();
+        ledTo(0, true);
     }
     else if (isTouchTriggered())
     {
@@ -212,14 +216,14 @@ void loop()
             {
                 Serial.println("u");
                 if (led.getCurrent() == 0)
-                    ledOn(127);
+                    ledTo(127);
                 else
-                    ledOn(255);
+                    ledTo(255);
             }
             else
             {
                 Serial.println("d");
-                led.off();
+                ledTo(0);
             }
         }
     }
