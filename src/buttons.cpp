@@ -58,42 +58,66 @@ bool isTouchTriggered()
 
 int8_t isCarTriggered()
 {
-#define ROUNDS 6
+#define ROUNDS 8
     static uint32_t lastCarTrigger;
 
-    if (millis() - lastCarTrigger < 800)
+    if (millis() - lastCarTrigger < 1000)
         _carTrigger = false;
     else if (_carTrigger)
     {
         lastCarTrigger = millis();
         _carTrigger = false;
 
-        delay(300); // let cap discharge
+        delay(400); // let cap discharge
 
-        // early test powered off
-        int val;
+        int diffBat = 0;
+        int lastBat = analogRead(carABat);
+        int diffLight = 0;
+        int lastLight = analogRead(carALight);
+        Serial.print("lastBat: ");
+        Serial.print(lastBat);
+        Serial.print(" lastLight: ");
+        Serial.println(lastLight);
         for (uint8_t i = 0; i < ROUNDS; i++)
         {
             delay(20);
-            val += analogRead(carABat);
+            int valBat = analogRead(carABat);
+            delay(20);
+            int valLight = analogRead(carALight);
+            Serial.print(valBat);
+            Serial.print(" ");
+            Serial.println(valLight);
+            diffBat += valBat - lastBat;
+            diffLight += valLight - lastLight;
+            lastBat = valBat;
+            lastLight = valLight;
         }
-        if (val < 200 * ROUNDS)
+        Serial.print("diff: ");
+        Serial.print(diffBat);
+        Serial.print(" ");
+        Serial.println(diffLight);
+        // Supply voltage check
+        if (diffBat < -10 * ROUNDS || lastBat < 400)
         {
             Serial.println("Poff");
             return CLOSED;
         }
+        // Ground line check
+        return diffLight < -5 * ROUNDS ? OPENED : CLOSED;
 
         // powered on
-        int res = 0;
-        auto prev = analogRead(carALight);
-        for (uint8_t i = 0; i < ROUNDS; i++)
-        {
-            delay(20);
-            auto r = analogRead(carALight);
-            res += r - prev;
-        }
-        Serial.println(res);
-        return res < -100 ? OPENED : CLOSED;
+        // int res = 0;
+        // int prev = analogRead(carALight);
+        // Serial.print("prev: ");
+        // Serial.println(prev);
+        // for (uint8_t i = 0; i < ROUNDS; i++)
+        // {
+        //     delay(20);
+        //     int r = analogRead(carALight);
+        //     Serial.println(r);
+        //     res += r - prev;
+        // }
+        // Serial.println(res);
     }
 
     return 0;
@@ -142,6 +166,7 @@ void scaleToVSup()
     for (size_t i = 0; i < ROUNDS; i++)
     {
         val += analogRead(carABat);
+        delay(10);
     }
     float volt = val * UCARCONV;
     Serial.print("UBat: ");
@@ -165,7 +190,7 @@ void scaleToVSup()
         led.set(--current);
 }
 
-void ledTo(uint8_t val = 255, bool quick = false)
+void ledTo(uint8_t val, bool quick = false)
 {
     led.setTime(quick ? FADETIME / 3 : FADETIME);
     directionUp = val > 0;
@@ -192,8 +217,8 @@ void loop()
     if (carTrigger == OPENED)
     {
         Serial.println("opened");
-        if (led.get() != 0)
-            ledTo(127, true);
+        if (led.get() == 0)
+            ledTo(50, true);
     }
     else if (carTrigger == CLOSED)
     {
@@ -216,9 +241,9 @@ void loop()
             {
                 Serial.println("u");
                 if (led.getCurrent() == 0)
-                    ledTo(127);
+                    ledTo(50);
                 else
-                    ledTo(255);
+                    ledTo(100);
             }
             else
             {
