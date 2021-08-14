@@ -68,7 +68,7 @@ int8_t isCarTriggered()
         lastCarTrigger = millis();
         _carTrigger = false;
 
-        delay(400); // let cap discharge
+        delay(300); // let cap discharge
 
         int diffBat = 0;
         int lastBat = analogRead(carABat);
@@ -99,7 +99,7 @@ int8_t isCarTriggered()
         // Supply voltage check
         if (diffBat < -10 * ROUNDS || lastBat < 400)
         {
-            Serial.println("Poff");
+            Serial.println("powered off");
             return CLOSED;
         }
         // Ground line check
@@ -195,7 +195,8 @@ void ledTo(uint8_t val, bool quick = false)
     led.setTime(quick ? FADETIME / 3 : FADETIME);
     directionUp = val > 0;
     led.set(val);
-    scaleToVSup();
+    if (val >= 100)
+        scaleToVSup();
     if (val != 0)
         lightOnSince = millis();
 }
@@ -218,7 +219,7 @@ void loop()
     {
         Serial.println("opened");
         if (led.get() == 0)
-            ledTo(50, true);
+            ledTo(40, true);
     }
     else if (carTrigger == CLOSED)
     {
@@ -241,7 +242,7 @@ void loop()
             {
                 Serial.println("u");
                 if (led.getCurrent() == 0)
-                    ledTo(50);
+                    ledTo(40);
                 else
                     ledTo(100);
             }
@@ -253,7 +254,7 @@ void loop()
         }
     }
     static uint32_t lastScale;
-    if (millis() - lastScale > 1000)
+    if (millis() - lastScale > 2000)
     {
         lastScale = millis();
         scaleToVSup();
@@ -261,4 +262,21 @@ void loop()
     evalShutdown();
     FadeLed::update();
     evalStandby();
+    // static uint8_t iter;
+    // if (OCR0B <= 10 && OCR0B > 0)
+    // {
+    //     // Serial.print(OCR0B);
+    //     ++iter;
+    //     iter %= 10;
+    //     if (iter > OCR0B)
+    //     {
+    //         digitalWrite(FETPort, LOW);
+    //         // Serial.println("-");
+    //     }
+    //     else
+    //     {
+    //         // analogWrite(FETPort, OCR0B);
+    //         // Serial.println("+");
+    //     }
+    // }
 }
