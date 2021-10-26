@@ -104,20 +104,6 @@ int8_t isCarTriggered()
         }
         // Ground line check
         return diffLight < -5 * ROUNDS ? OPENED : CLOSED;
-
-        // powered on
-        // int res = 0;
-        // int prev = analogRead(carALight);
-        // Serial.print("prev: ");
-        // Serial.println(prev);
-        // for (uint8_t i = 0; i < ROUNDS; i++)
-        // {
-        //     delay(20);
-        //     int r = analogRead(carALight);
-        //     Serial.println(r);
-        //     res += r - prev;
-        // }
-        // Serial.println(res);
     }
 
     return 0;
@@ -149,9 +135,9 @@ void ISR1()
 
 void setup()
 {
-    pinMode(touchPin, INPUT);
+    pinMode(touchPin, INPUT_PULLUP);
     pinMode(carPin, INPUT);
-    attachInterrupt(digitalPinToInterrupt(touchPin), ISR0, RISING);
+    attachInterrupt(digitalPinToInterrupt(touchPin), ISR0, FALLING);
     attachInterrupt(digitalPinToInterrupt(carPin), ISR1, CHANGE);
 
     FadeLed::setInterval(10);
@@ -219,7 +205,7 @@ void loop()
     {
         Serial.println("opened");
         if (led.get() == 0)
-            ledTo(40, true);
+            ledTo(30, true);
     }
     else if (carTrigger == CLOSED)
     {
@@ -242,14 +228,14 @@ void loop()
             {
                 Serial.println("u");
                 if (led.getCurrent() == 0)
-                    ledTo(40);
+                    ledTo(10, false);
                 else
-                    ledTo(100);
+                    ledTo(100, false);
             }
             else
             {
                 Serial.println("d");
-                ledTo(0);
+                ledTo(0, false);
             }
         }
     }
@@ -262,21 +248,4 @@ void loop()
     evalShutdown();
     FadeLed::update();
     evalStandby();
-    // static uint8_t iter;
-    // if (OCR0B <= 10 && OCR0B > 0)
-    // {
-    //     // Serial.print(OCR0B);
-    //     ++iter;
-    //     iter %= 10;
-    //     if (iter > OCR0B)
-    //     {
-    //         digitalWrite(FETPort, LOW);
-    //         // Serial.println("-");
-    //     }
-    //     else
-    //     {
-    //         // analogWrite(FETPort, OCR0B);
-    //         // Serial.println("+");
-    //     }
-    // }
 }
