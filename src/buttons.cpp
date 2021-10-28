@@ -4,7 +4,7 @@
 
 const uint32_t standbyDelay = 5UL * 1000UL;
 uint32_t lastLight;
-const uint32_t shutdownDelay = 30UL * 60UL * 1000UL;
+const uint32_t shutdownDelay = 120UL * 60UL * 1000UL;
 uint32_t lightOnSince;
 
 bool directionUp;
@@ -17,7 +17,7 @@ volatile bool _touched = false;
 volatile bool _carTrigger = false;
 #define OPENED 1
 #define CLOSED -1
-#define FADETIME 5000
+#define FADETIME 2500
 
 #define UCARCONV 13.3f / 608.0f / ROUNDS
 #define UCARMAX 12.5f
@@ -46,7 +46,7 @@ bool isTouchTriggered()
     static uint32_t lastTouch;
     bool t = false;
 
-    if (millis() - lastTouch < 200)
+    if (millis() - lastTouch < 300)
         _touched = false;
     else if (_touched)
     {
@@ -178,7 +178,7 @@ void scaleToVSup()
 
 void ledTo(uint8_t val, bool quick = false)
 {
-    led.setTime(quick ? FADETIME / 3 : FADETIME);
+    led.setTime(quick ? FADETIME / 3 : FADETIME,true);
     directionUp = val > 0;
     led.set(val);
     if (val >= 100)
@@ -228,7 +228,7 @@ void loop()
             {
                 Serial.println("u");
                 if (led.getCurrent() == 0)
-                    ledTo(10, false);
+                    ledTo(20, false);
                 else
                     ledTo(100, false);
             }
