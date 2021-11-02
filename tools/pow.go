@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -27,27 +28,27 @@ var v float64 = 0
 // 	Serial.println(F("  In pow(..) function "));
 //   }
 
-const MAX_PWM_VALUE = 0xFFFF
+const MAX_PWM_VALUE = 4096
 
 func main() {
-	for maxInputValue := 10; maxInputValue < 0xffff; maxInputValue++ {
-		go func(maxInputValue int) {
-			var exp float64 = 1
-			var expLast float64 = 0
-			var expadj float64 = 1
-			var v float64
-			i := 0
-			for exp != expLast {
-				i++
-				expLast = exp
-				v = math.Pow(float64(maxInputValue), exp)
-				if v > MAX_PWM_VALUE {
-					exp -= expadj
-					expadj = expadj / 10
-				}
-				exp += expadj
+	for maxInputValue := 100; maxInputValue <= 100; maxInputValue++ {
+		// go func(maxInputValue int) {
+		var exp float64 = 1
+		var expLast float64 = 0
+		var expadj float64 = 1
+		var v float64
+		i := 0
+		for exp != expLast {
+			i++
+			expLast = exp
+			v = math.Pow(float64(maxInputValue), exp)
+			if v > MAX_PWM_VALUE {
+				exp -= expadj
+				expadj = expadj / 10
 			}
-			// fmt.Printf("For %d use %.15f - took %d\n", maxInputValue, exp, i)
-		}(maxInputValue)
+			exp += expadj
+		}
+		fmt.Printf("For %d use %.15f - took %d\n", maxInputValue, exp, i)
+		// }(maxInputValue)
 	}
 }
