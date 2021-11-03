@@ -29,10 +29,10 @@ double findMaxForPow(uint16_t maxInputValue)
   Serial.print(F("  Use: "));
   Serial.print(exp, 10);
   Serial.println(F("  In pow(..) function "));
+  return exp;
 }
-FadeLed::FadeLed(byte pin) : FadeLed(pin, 100)
-{
-}
+
+FadeLed::FadeLed(byte pin) : FadeLed(pin, FADE_LED_RESOLUTION) {}
 
 FadeLed::FadeLed(byte pin, flvar_t biggestStep) : _pin(pin),
                                                   _count(0),
@@ -43,39 +43,43 @@ FadeLed::FadeLed(byte pin, flvar_t biggestStep) : _pin(pin),
                                                   _biggestStep(biggestStep)
 {
   _power = findMaxForPow(biggestStep);
+  pinMode(_pin, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
 
-  //only add it if it fits
-  // if(_ledCount < FADE_LED_MAX_LED){
-  // _ledList = this;
-  // }
+  cli();        // Disable all interrupts
+  TCCR1A = 0;   // Clear all flags in control register A
+  TCCR1B = 0;   // Clear all flags in control register B
+  TCNT1 = 0;    // Zero timer 1 count
+  TIFR1 = 0xFF; // Clear all flags in interrupt flag register
+
+  // Set fast PWM Mode 14
+  TCCR1A |= (1 << WGM11);
+  TCCR1B |= (1 << WGM12);
+  TCCR1B |= (1 << WGM13);
+
+  // Set prescaler to 64 and starts PWM
+  TCCR1B |= (1 << CS10);
+  TCCR1B |= (1 << CS11);
+
+  TIMSK1 |= (1 << OCIE1A); // Enable timer compare interrupt
+  TIMSK1 |= (1 << TOIE1);  // Enable timer overflow interrupt
+
+  // Set PWM frequency/top value
+  ICR1 = FADE_LED_RESOLUTION;
+  OCR1A = 0;
+  sei(); // Enable all interrupts
 }
 
-FadeLed::FadeLed(byte pin) : FadeLed(pin, FADE_LED_RESOLUTION)
-{
-  // if(hasGammaTable){
-  //   // _gammaLookup = FadeLedGammaTable;
-  _biggestStep = 100;
-  // }
+ISR(TIMER1_OVF_vect){                   // Timer1 overflow interrupt service routine
+  PORTB |= _BV(PORTB5);                 // Turn LED (pin 13) on
+}
+
+ISR(TIMER1_COMPA_vect){                 // Timer1 compare interrupt service routine
+  PORTB &= ~_BV(PORTB5);                // Turn LED off
 }
 
 FadeLed::~FadeLed()
 {
-  //Find current possition of this object
-  // byte posThis=0;
-  // while((posThis < _ledCount) && (_ledList[posThis] != this)){
-  //   posThis++;
-  // }
-
-  //if not in the list (how weird), it's done
-  // if(posThis == _ledCount){
-  //   return;
-  // }
-
-  //Otherwise, delete this object by shifting in the rest
-  // _ledCount--;
-  // for(byte i = posThis; i < _ledCount; i++){
-  //   _ledList[i] = _ledList[i + 1];
-  // }
 }
 
 void FadeLed::begin(flvar_t val)

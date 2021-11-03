@@ -20,6 +20,7 @@
   #include <avr/pgmspace.h>
 #endif
 
+
 /**
  *  @brief Sets the number of bits used for the PWM.
  *  

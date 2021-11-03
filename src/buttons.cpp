@@ -12,7 +12,7 @@ const uint8_t touchPin = 2;
 const uint8_t carPin = 3;
 const uint8_t carALight = A1;
 const uint8_t carABat = A2;
-const uint8_t FETPort = 5;
+const uint8_t FETPort = D5;
 volatile bool _touched = false;
 volatile bool _carTrigger = false;
 #define OPENED 1
