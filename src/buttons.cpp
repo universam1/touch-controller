@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include "LowPower.h"
 #include <FadeLed.h>
+#include <Bounce2.h>
+Bounce bounce = Bounce();
 
 const uint32_t standbyDelay = 5UL * 1000UL;
 uint32_t lastLight;
@@ -8,7 +10,7 @@ const uint32_t shutdownDelay = 120UL * 60UL * 1000UL;
 uint32_t lightOnSince;
 
 bool directionUp;
-const uint8_t touchPin = 2;
+const uint8_t buttonPin = 2;
 const uint8_t carPin = 3;
 const uint8_t carALight = A1;
 const uint8_t carABat = A2;
@@ -18,6 +20,11 @@ volatile bool _carTrigger = false;
 #define OPENED 1
 #define CLOSED -1
 #define FADETIME 2500
+
+#define OFF 0
+#define CAR_ON 1
+#define BUTTON_ON 2
+uint8_t state = OFF;
 
 #define UCARCONV 13.3f / 608.0f / ROUNDS
 #define UCARMAX 12.5f
@@ -41,20 +48,20 @@ void flash()
     delay(50);
 }
 
-bool isTouchTriggered()
-{
-    static uint32_t lastTouch;
-    bool t = false;
+// bool isTouchTriggered()
+// {
+//     static uint32_t lastTouch;
+//     bool t = false;
 
-    if (millis() - lastTouch < 300)
-        _touched = false;
-    else if (_touched)
-    {
-        lastTouch = millis();
-        t = true;
-    }
-    return t;
-}
+//     if (millis() - lastTouch < 300)
+//         _touched = false;
+//     else if (_touched)
+//     {
+//         lastTouch = millis();
+//         t = true;
+//     }
+//     return t;
+// }
 
 int8_t isCarTriggered()
 {
@@ -125,7 +132,7 @@ void evalStandby()
 
 void ISR0()
 {
-    _touched = true;
+    // _touched = true;
 }
 
 void ISR1()
@@ -135,15 +142,24 @@ void ISR1()
 
 void setup()
 {
-    pinMode(touchPin, INPUT_PULLUP);
+    Serial.begin(115200);
+
+    // pinMode(buttonPin, INPUT_PULLUP);
+
+    // SELECT ONE OF THE FOLLOWING :
+    // 1) IF YOUR INPUT HAS AN INTERNAL PULL-UP
+    bounce.attach(buttonPin, INPUT_PULLUP); // USE INTERNAL PULL-UP
+    // 2) IF YOUR INPUT USES AN EXTERNAL PULL-UP
+    // bounce.attach( BOUNCE_PIN, INPUT ); // USE EXTERNAL PULL-UP
+
+    // DEBOUNCE INTERVAL IN MILLISECONDS
+    bounce.interval(40); // interval in ms
     pinMode(carPin, INPUT);
-    attachInterrupt(digitalPinToInterrupt(touchPin), ISR0, FALLING);
+    attachInterrupt(digitalPinToInterrupt(buttonPin), ISR0, FALLING);
     attachInterrupt(digitalPinToInterrupt(carPin), ISR1, CHANGE);
 
     FadeLed::setInterval(10);
     led.setTime(FADETIME);
-
-    Serial.begin(115200);
 }
 
 void scaleToVSup()
@@ -178,16 +194,18 @@ void scaleToVSup()
 
 void ledTo(uint8_t val, bool quick = false)
 {
-    led.setTime(quick ? FADETIME / 3 : FADETIME,true);
+    led.setTime(quick ? FADETIME / 3 : FADETIME, true);
     directionUp = val > 0;
     led.set(val);
     if (val >= 100)
         scaleToVSup();
     if (val != 0)
         lightOnSince = millis();
+    else
+        state = OFF;
 }
 
-void evalShutdown()
+void evalTurnOff()
 {
     if (led.get() == 0)
         return;
@@ -200,42 +218,61 @@ void evalShutdown()
 
 void loop()
 {
+
     auto carTrigger = isCarTriggered();
     if (carTrigger == OPENED)
     {
         Serial.println("opened");
-        if (led.get() == 0)
+        if (led.get() == 0 && state == OFF)
+        {
+            state = CAR_ON;
             ledTo(30, true);
+        }
     }
     else if (carTrigger == CLOSED)
     {
         Serial.println("closed");
-        directionUp = false;
-        ledTo(0, true);
-    }
-    else if (isTouchTriggered())
-    {
-        flash();
-        if (!led.done())
+        if (state == CAR_ON)
         {
-            Serial.println("s");
-            led.stop();
+            directionUp = false;
+            ledTo(0, true);
         }
-        else
+    }
+bounce.update();
+    if (bounce.changed())
+    {
+        // THE STATE OF THE INPUT CHANGED
+        // GET THE STATE
+        int deboucedInput = bounce.read();
+        // IF THE CHANGED VALUE IS HIGH
+        if (deboucedInput == LOW)
         {
-            directionUp = !directionUp;
-            if (directionUp)
+
+            // else if (isTouchTriggered())
+            // {
+            flash();
+            if (!led.done())
             {
-                Serial.println("u");
-                if (led.getCurrent() == 0)
-                    ledTo(20, false);
-                else
-                    ledTo(100, false);
+                Serial.println("s");
+                led.stop();
             }
             else
             {
-                Serial.println("d");
-                ledTo(0, false);
+                directionUp = !directionUp;
+                if (directionUp)
+                {
+                    Serial.println("u");
+                    state = BUTTON_ON;
+                    if (led.getCurrent() == 0)
+                        ledTo(20, false);
+                    else
+                        ledTo(100, false);
+                }
+                else
+                {
+                    Serial.println("d");
+                    ledTo(0, false);
+                }
             }
         }
     }
@@ -245,7 +282,7 @@ void loop()
         lastScale = millis();
         scaleToVSup();
     }
-    evalShutdown();
+    evalTurnOff();
     FadeLed::update();
     evalStandby();
 }
