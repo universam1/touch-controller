@@ -4,7 +4,7 @@
 unsigned int FadeLed::_interval = 50;
 unsigned int FadeLed::_millisLast = 0;
 // byte FadeLed::_ledCount = 0;
-// FadeLed* FadeLed::_ledList[FADE_LED_MAX_LED];
+FadeLed* FadeLed::_ledList;
 //----------------------------------------------------------------------------------------------------
 double findMaxForPow(uint16_t maxInputValue)
 {
@@ -42,6 +42,8 @@ FadeLed::FadeLed(byte pin, flvar_t biggestStep) : _pin(pin),
                                                   // _gammaLookup(gammaLookup),
                                                   _biggestStep(biggestStep)
 {
+
+  _ledList = this;
   _power = findMaxForPow(biggestStep);
   pinMode(_pin, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);

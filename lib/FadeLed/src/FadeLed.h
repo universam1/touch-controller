@@ -417,7 +417,7 @@ class FadeLed{
      */
     // flvar_t getGamma(flvar_t step);
     
-    // static FadeLed* _ledList; //!< array of pointers to all FadeLed objects
+    static FadeLed* _ledList; //!< array of pointers to all FadeLed objects
     static unsigned int _interval; //!< Interval (in ms) between updates
     static unsigned int _millisLast; //!< Last time all FadeLed objects where updated
     static double _power;

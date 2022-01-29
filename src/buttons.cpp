@@ -12,7 +12,7 @@ const uint8_t touchPin = 2;
 const uint8_t carPin = 3;
 const uint8_t carALight = A1;
 const uint8_t carABat = A2;
-const uint8_t FETPort = D5;
+const uint8_t FETPort = 5;
 volatile bool _touched = false;
 volatile bool _carTrigger = false;
 #define OPENED 1
@@ -168,12 +168,12 @@ void scaleToVSup()
     Serial.print("    limit: ");
     Serial.print(limit);
     Serial.print("    gamma: ");
-    Serial.print(led.getGammaValue(current));
+    // Serial.print(led.getGammaValue(current));
 
     Serial.print("    Ulight: ");
     Serial.println(analogRead(carALight));
-    if (led.getGammaValue(current) > limit)
-        led.set(--current);
+    // if (led.getGammaValue(current) > limit)
+    //     led.set(--current);
 }
 
 void ledTo(uint8_t val, bool quick = false)
